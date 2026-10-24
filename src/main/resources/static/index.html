@@ -1,0 +1,188 @@
+
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Öğrenci Yönetim Sistemi</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="logo">🎓 ÖğrenciPanel</div>
+
+        <nav>
+            <a href="#" class="menu-item active">🏠 Ana Sayfa</a>
+            <a href="#ogrenciBolumu" class="menu-item">👨‍🎓 Öğrenciler</a>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <span>Öğrenci Yönetim Sistemi</span>
+            <p class="bean-info">
+                Spring şu an <strong id="beanSayisi">...</strong> bean yönetiyor.
+            </p>
+        </div>
+    </aside>
+
+    <main class="main-content">
+
+        <header class="topbar">
+            <div>
+                <h1>Öğrenci Yönetim Sistemi</h1>
+                <p>Öğrencilerini kolayca yönet.</p>
+            </div>
+
+            <div class="profile">
+                <span class="profile-icon">👤</span>
+                <span>Yönetici</span>
+            </div>
+        </header>
+
+        <section class="welcome">
+            <div>
+                <h2>Hoş geldin! 👋</h2>
+                <p>Öğrenci kayıtlarını buradan yönetebilirsin.</p>
+            </div>
+
+            <button type="button" class="primary-button" onclick="formuAc()">
+                + Öğrenci Ekle
+            </button>
+        </section>
+
+        <section class="stats">
+            <div class="stat-card">
+                <div class="stat-icon blue">👨‍🎓</div>
+                <div>
+                    <p>Toplam Öğrenci</p>
+                    <h2 id="toplamOgrenci">0</h2>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon purple">📚</div>
+                <div>
+                    <p>Farklı Bölüm</p>
+                    <h2 id="toplamBolum">0</h2>
+                </div>
+            </div>
+        </section>
+
+        <section class="system-status-card">
+            <div class="system-status-icon">⚙️</div>
+
+            <div class="system-status-content">
+                <h2>Sistem Durumu</h2>
+                <p>Spring Boot uygulamasının sağlık kontrolü</p>
+
+                <div class="system-status-line">
+                    <span id="sistemDurumNoktasi" class="status-dot"></span>
+                    <strong id="sistemDurumu">Kontrol ediliyor...</strong>
+                </div>
+
+                <p class="system-status-detail" id="sistemDetayi">
+                    Actuator üzerinden kontrol ediliyor.
+                </p>
+            </div>
+
+            <button
+                type="button"
+                class="secondary-button"
+                onclick="sistemDurumunuGetir()"
+            >
+                Yenile
+            </button>
+        </section>
+
+        <section class="student-section" id="ogrenciBolumu">
+            <div class="section-header">
+                <div>
+                    <h2>Öğrenci Listesi</h2>
+                    <p>Kayıtlı öğrencileri görüntüle ve ara.</p>
+                </div>
+
+                <input
+                    type="text"
+                    id="arama"
+                    placeholder="Öğrenci ara..."
+                    oninput="ogrencileriFiltrele()"
+                >
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Ad</th>
+                            <th>Soyad</th>
+                            <th>Bölüm</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="ogrenciTablosu">
+                        <tr>
+                            <td colspan="5" class="empty">
+                                Öğrenciler yükleniyor...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="ogrenciModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 id="formBasligi">Yeni Öğrenci Ekle</h2>
+                    <p>Öğrenci bilgilerini doldur.</p>
+                </div>
+
+                <button
+                    type="button"
+                    class="close-button"
+                    onclick="formuKapat()"
+                >×</button>
+            </div>
+
+            <form id="ogrenciFormu">
+                <input type="hidden" id="ogrenciId">
+
+                <label for="ad">Ad</label>
+                <input type="text" id="ad" required placeholder="Öğrencinin adı">
+
+                <label for="soyad">Soyad</label>
+                <input type="text" id="soyad" required placeholder="Öğrencinin soyadı">
+
+                <label for="bolum">Bölüm</label>
+                <input
+                    type="text"
+                    id="bolum"
+                    required
+                    placeholder="Örn. Yazılım Mühendisliği"
+                >
+
+                <div class="form-buttons">
+                    <button
+                        type="button"
+                        class="secondary-button"
+                        onclick="formuKapat()"
+                    >
+                        İptal
+                    </button>
+
+                    <button type="submit" class="primary-button">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="bildirim" class="notification"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
