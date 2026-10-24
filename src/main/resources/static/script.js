@@ -1,155 +1,398 @@
 
 const API_URL = "/ogrenciler";
+const BEAN_URL = "/sistem/bean-sayisi";
+const HEALTH_URL = "/actuator/health";
 
 let ogrenciListesi = [];
+let bolumGrafigi = null;
+let bildirimZamanlayicisi = null;
+let istekSuruyor = false;
 
-// 1. Öğrencileri getir
+const grafikRenkleri = [
+    "#5969f5",
+    "#8b5cf6",
+    "#22b987",
+    "#f4ad48",
+    "#ec6b88",
+    "#28a9d5",
+    "#a3a0f5",
+    "#ef8757",
+    "#44b7a6",
+    "#7c8ca5"
+];
+
+/* Sayfa başlangıcı */
+document.addEventListener("DOMContentLoaded", () => {
+    tarihiGoster();
+    ogrencileriGetir();
+    beanSayisiniGetir();
+    sistemDurumunuGetir();
+
+    document.getElementById("arama").addEventListener("input", ogrencileriFiltrele);
+
+    document.getElementById("ogrenciFormu").addEventListener("submit", ogrenciKaydet);
+
+    document.getElementById("ogrenciModal").addEventListener("click", event => {
+        if (event.target.id === "ogrenciModal") {
+            formuKapat();
+        }
+    });
+
+    document.addEventListener("keydown", event => {
+        if (event.key === "Escape") {
+            formuKapat();
+        }
+    });
+
+    // Menüde tıklanan bölümü görsel olarak belirt.
+    document.querySelectorAll(".menu-item").forEach(item => {
+        item.addEventListener("click", () => {
+            document.querySelectorAll(".menu-item").forEach(menu => {
+                menu.classList.remove("active");
+            });
+            item.classList.add("active");
+        });
+    });
+});
+
+/* Bugünün tarihini göster */
+function tarihiGoster() {
+    const alan = document.getElementById("bugununTarihi");
+
+    alan.textContent = new Intl.DateTimeFormat("tr-TR", {
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+    }).format(new Date());
+}
+
+/* API yanıtını güvenli şekilde JSON olarak oku */
+async function jsonOku(cevap) {
+    if (!cevap.ok) {
+        throw new Error("Sunucu isteği başarısız. HTTP " + cevap.status);
+    }
+
+    return cevap.json();
+}
+
+/* Öğrencileri backend'den getir */
 async function ogrencileriGetir() {
     const tablo = document.getElementById("ogrenciTablosu");
 
-    try {
-        const cevap = await fetch(API_URL);
+    if (istekSuruyor) return;
+    istekSuruyor = true;
 
-        if (!cevap.ok) {
-            throw new Error("Öğrenciler alınamadı.");
+    try {
+        const cevap = await fetch(API_URL, {
+            headers: { "Accept": "application/json" }
+        });
+
+        const veri = await jsonOku(cevap);
+
+        if (!Array.isArray(veri)) {
+            throw new Error("Sunucudan beklenen öğrenci listesi gelmedi.");
         }
 
-        ogrenciListesi = await cevap.json();
-
+        ogrenciListesi = veri;
         ogrencileriFiltrele();
         istatistikleriGuncelle();
+        bolumAnaliziniGuncelle();
 
     } catch (hata) {
-        console.error("Öğrenci yükleme hatası:", hata);
+        console.error("Öğrenciler yüklenemedi:", hata);
 
         tablo.innerHTML = `
             <tr>
-                <td colspan="5" class="empty">
-                    Öğrenciler yüklenemedi. Sunucuyu kontrol et.
+                <td colspan="4" class="empty">
+                    Öğrenciler yüklenemedi. Spring Boot uygulamasını ve
+                    /ogrenciler adresini kontrol et.
                 </td>
             </tr>
         `;
+
+        document.getElementById("sonucSayisi").textContent = "Veri alınamadı";
+        document.getElementById("tabloBilgisi").textContent = "Bağlantı hatası";
+        bildirimGoster("Öğrenci listesi yüklenemedi.", true);
+
+    } finally {
+        istekSuruyor = false;
     }
 }
 
-// 2. Öğrencileri ara ve filtrele
+/* Öğrencileri ara */
 function ogrencileriFiltrele() {
-    const arama = document
-        .getElementById("arama")
+    const arama = document.getElementById("arama")
         .value
         .toLocaleLowerCase("tr-TR")
         .trim();
 
     const filtrelenmis = ogrenciListesi.filter(ogrenci => {
-        const adSoyad =
-            `${ogrenci.ad || ""} ${ogrenci.soyad || ""}`
-                .toLocaleLowerCase("tr-TR");
-
-        const bolum = (ogrenci.bolum || "")
+        const adSoyad = `${ogrenci.ad || ""} ${ogrenci.soyad || ""}`
             .toLocaleLowerCase("tr-TR");
 
-        return adSoyad.includes(arama) ||
-               bolum.includes(arama);
+        const bolum = (ogrenci.bolum || "").toLocaleLowerCase("tr-TR");
+
+        return adSoyad.includes(arama) || bolum.includes(arama);
     });
 
     const tablo = document.getElementById("ogrenciTablosu");
 
+    document.getElementById("sonucSayisi").textContent =
+        `${filtrelenmis.length} öğrenci`;
+
+    document.getElementById("tabloBilgisi").textContent =
+        `Toplam ${ogrenciListesi.length} kayıt`;
+
     if (filtrelenmis.length === 0) {
         tablo.innerHTML = `
             <tr>
-                <td colspan="5" class="empty">
-                    Öğrenci bulunamadı.
+                <td colspan="4" class="empty">
+                    ${arama ? "Aramana uygun öğrenci bulunamadı." : "Henüz öğrenci kaydı bulunmuyor."}
                 </td>
             </tr>
         `;
         return;
     }
 
-    tablo.innerHTML = filtrelenmis.map(ogrenci => `
-        <tr>
-            <td>${guvenliMetin(ogrenci.id)}</td>
-            <td>${guvenliMetin(ogrenci.ad)}</td>
-            <td>${guvenliMetin(ogrenci.soyad)}</td>
-            <td>${guvenliMetin(ogrenci.bolum)}</td>
-            <td class="actions">
-                <button
-                    type="button"
-                    class="edit-button"
-                    onclick="ogrenciDuzenle(${Number(ogrenci.id)})">
-                    Düzenle
-                </button>
+    tablo.innerHTML = filtrelenmis.map(ogrenci => {
+        const id = Number(ogrenci.id);
+        const ad = guvenliMetin(ogrenci.ad);
+        const soyad = guvenliMetin(ogrenci.soyad);
+        const bolum = guvenliMetin(ogrenci.bolum);
+        const tamAd = `${ogrenci.ad || ""} ${ogrenci.soyad || ""}`.trim();
+        const basHarfler = tamAd
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map(kelime => kelime.charAt(0).toLocaleUpperCase("tr-TR"))
+            .join("");
 
-                <button
-                    type="button"
-                    class="delete-button"
-                    onclick="ogrenciSil(${Number(ogrenci.id)})">
-                    Sil
-                </button>
-            </td>
-        </tr>
-    `).join("");
+        return `
+            <tr>
+                <td>
+                    <div class="student-cell">
+                        <div class="student-avatar">${guvenliMetin(basHarfler || "?")}</div>
+                        <div>
+                            <div class="student-name">${ad} ${soyad}</div>
+                            <div class="student-subtitle">Öğrenci kaydı</div>
+                        </div>
+                    </div>
+                </td>
+                <td><span class="student-id">#${guvenliMetin(ogrenci.id)}</span></td>
+                <td><span class="department-badge">${bolum || "Bölüm belirtilmemiş"}</span></td>
+                <td class="actions">
+                    <button type="button" class="edit-button"
+                        data-action="edit" data-id="${id}">Düzenle</button>
+                    <button type="button" class="delete-button"
+                        data-action="delete" data-id="${id}">Sil</button>
+                </td>
+            </tr>
+        `;
+    }).join("");
+
+    // Butonları event listener ile bağla.
+    tablo.querySelectorAll("button[data-action]").forEach(buton => {
+        buton.addEventListener("click", () => {
+            const id = Number(buton.dataset.id);
+
+            if (buton.dataset.action === "edit") {
+                ogrenciDuzenle(id);
+            } else {
+                ogrenciSil(id);
+            }
+        });
+    });
 }
 
-// 3. Metinleri güvenli şekilde göster
+/* HTML metinlerini güvenli biçimde kodla */
 function guvenliMetin(metin) {
     const eleman = document.createElement("span");
-    eleman.textContent = metin ?? "";
+    eleman.textContent = metin == null ? "" : String(metin);
     return eleman.innerHTML;
 }
 
-// 4. İstatistikleri güncelle
+/* İstatistik kartlarını güncelle */
 function istatistikleriGuncelle() {
     document.getElementById("toplamOgrenci").textContent =
         ogrenciListesi.length;
 
-    const bolumler = new Set(
-        ogrenciListesi
-            .map(ogrenci => (ogrenci.bolum || "").trim())
-            .filter(bolum => bolum.length > 0)
-            .map(bolum => bolum.toLocaleLowerCase("tr-TR"))
-    );
+    const bolumler = bolumVerileriniHesapla();
 
     document.getElementById("toplamBolum").textContent =
-        bolumler.size;
+        bolumler.length;
+
+    document.getElementById("grafikToplam").textContent =
+        ogrenciListesi.length;
 }
 
-// 5. Yeni öğrenci formunu aç
+/* Bölümlere göre öğrenci sayılarını hesapla */
+function bolumVerileriniHesapla() {
+    const sayac = new Map();
+
+    ogrenciListesi.forEach(ogrenci => {
+        const bolum = (ogrenci.bolum || "").trim();
+
+        if (!bolum) return;
+
+        // Aynı bölümün yazımında büyük/küçük harf farkını birleştir.
+        const anahtar = bolum.toLocaleLowerCase("tr-TR");
+
+        if (!sayac.has(anahtar)) {
+            sayac.set(anahtar, { ad: bolum, sayi: 0 });
+        }
+
+        sayac.get(anahtar).sayi++;
+    });
+
+    return [...sayac.values()].sort((a, b) => b.sayi - a.sayi);
+}
+
+/* Grafik ve bölüm kartlarını güncelle */
+function bolumAnaliziniGuncelle() {
+    const bolumler = bolumVerileriniHesapla();
+
+    bolumGrafikGuncelle(bolumler);
+    bolumListesiniGuncelle(bolumler);
+}
+
+/* Halka grafik */
+function bolumGrafikGuncelle(bolumler) {
+    const canvas = document.getElementById("bolumGrafigi");
+    const bosMesaji = document.getElementById("grafikBosMesaji");
+    const lejand = document.getElementById("bolumLejandi");
+
+    const grafikVerisi = bolumler.filter(bolum => bolum.sayi > 0);
+
+    if (bolumGrafigi) {
+        bolumGrafigi.destroy();
+        bolumGrafigi = null;
+    }
+
+    lejand.innerHTML = "";
+
+    if (typeof Chart === "undefined") {
+        bosMesaji.hidden = false;
+        bosMesaji.textContent =
+            "Grafik kütüphanesi yüklenemedi. İnternet bağlantısını kontrol et.";
+        canvas.style.display = "none";
+        return;
+    }
+
+    canvas.style.display = "block";
+
+    if (grafikVerisi.length === 0) {
+        bosMesaji.hidden = false;
+        return;
+    }
+
+    bosMesaji.hidden = true;
+
+    const renkler = grafikVerisi.map(
+        (_, index) => grafikRenkleri[index % grafikRenkleri.length]
+    );
+
+    bolumGrafigi = new Chart(canvas, {
+        type: "doughnut",
+        data: {
+            labels: grafikVerisi.map(bolum => bolum.ad),
+            datasets: [{
+                data: grafikVerisi.map(bolum => bolum.sayi),
+                backgroundColor: renkler,
+                borderWidth: 0,
+                hoverOffset: 7,
+                spacing: 4,
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: "76%",
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: "#172033",
+                    padding: 12,
+                    cornerRadius: 8,
+                    callbacks: {
+                        label: context =>
+                            ` ${context.label}: ${context.raw} öğrenci`
+                    }
+                }
+            }
+        }
+    });
+
+    lejand.innerHTML = grafikVerisi.map((bolum, index) => `
+        <span class="legend-item">
+            <span class="legend-dot"
+                style="background:${renkler[index]}"></span>
+            ${guvenliMetin(bolum.ad)}
+        </span>
+    `).join("");
+}
+
+/* Bölüm sayılarını ilerleme çubuklarıyla göster */
+function bolumListesiniGuncelle(bolumler) {
+    const alan = document.getElementById("bolumListesi");
+
+    if (bolumler.length === 0) {
+        alan.innerHTML = `
+            <div class="loading-state">
+                Henüz bölüm verisi yok. Öğrenci eklediğinde burada görünecek.
+            </div>
+        `;
+        return;
+    }
+
+    const enYuksekSayi = bolumler[0].sayi;
+
+    alan.innerHTML = bolumler.map((bolum, index) => {
+        const yuzde = ogrenciListesi.length
+            ? Math.round(bolum.sayi / ogrenciListesi.length * 100)
+            : 0;
+
+        const genislik = Math.round(bolum.sayi / enYuksekSayi * 100);
+        const renk = grafikRenkleri[index % grafikRenkleri.length];
+
+        return `
+            <div class="department-item">
+                <div class="department-meta">
+                    <span class="department-name">${guvenliMetin(bolum.ad)}</span>
+                    <span class="department-count">
+                        ${bolum.sayi} <small>öğrenci · %${yuzde}</small>
+                    </span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill"
+                        style="width:${genislik}%;background:${renk}"></div>
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+/* Formu yeni öğrenci eklemek için aç */
 function formuAc() {
-    document.getElementById("ogrenciFormu").reset();
+    const form = document.getElementById("ogrenciFormu");
+
+    form.reset();
     document.getElementById("ogrenciId").value = "";
+    document.getElementById("formBasligi").textContent = "Yeni öğrenci ekle";
+    document.getElementById("kaydetButonu").textContent = "Öğrenciyi kaydet";
 
-    document.getElementById("formBasligi").textContent =
-        "Yeni Öğrenci Ekle";
-
-    document.getElementById("ogrenciModal").style.display = "flex";
+    modalAc();
+    document.getElementById("ad").focus();
 }
 
-// 6. Formu kapat
-function formuKapat() {
-    document.getElementById("ogrenciModal").style.display = "none";
-}
-
-// 7. Bildirim göster
-function bildirimGoster(mesaj, hata = false) {
-    const bildirim = document.getElementById("bildirim");
-
-    bildirim.textContent = mesaj;
-    bildirim.classList.toggle("error", hata);
-    bildirim.style.display = "block";
-
-    setTimeout(() => {
-        bildirim.style.display = "none";
-    }, 3000);
-}
-
-// 8. Öğrenciyi düzenleme formuna getir
+/* Formu mevcut öğrenci bilgileriyle aç */
 function ogrenciDuzenle(id) {
     const ogrenci = ogrenciListesi.find(
-        ogrenci => Number(ogrenci.id) === Number(id)
+        kayit => Number(kayit.id) === Number(id)
     );
 
     if (!ogrenci) {
-        bildirimGoster("Öğrenci bulunamadı.", true);
+        bildirimGoster("Öğrenci bulunamadı. Listeyi yenile.", true);
         return;
     }
 
@@ -158,189 +401,204 @@ function ogrenciDuzenle(id) {
     document.getElementById("soyad").value = ogrenci.soyad || "";
     document.getElementById("bolum").value = ogrenci.bolum || "";
 
-    document.getElementById("formBasligi").textContent =
-        "Öğrenci Düzenle";
+    document.getElementById("formBasligi").textContent = "Öğrenciyi düzenle";
+    document.getElementById("kaydetButonu").textContent = "Değişiklikleri kaydet";
 
-    document.getElementById("ogrenciModal").style.display = "flex";
+    modalAc();
+    document.getElementById("ad").focus();
 }
 
-// 9. Öğrenci ekle veya güncelle
-document.getElementById("ogrenciFormu").addEventListener(
-    "submit",
-    async function(event) {
-        event.preventDefault();
+function modalAc() {
+    const modal = document.getElementById("ogrenciModal");
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden", "false");
+}
 
-        const id = document.getElementById("ogrenciId").value;
+function formuKapat() {
+    const modal = document.getElementById("ogrenciModal");
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+}
 
-        const ogrenci = {
-            ad: document.getElementById("ad").value.trim(),
-            soyad: document.getElementById("soyad").value.trim(),
-            bolum: document.getElementById("bolum").value.trim()
-        };
+/* Öğrenci ekle veya güncelle */
+async function ogrenciKaydet(event) {
+    event.preventDefault();
 
-        if (!ogrenci.ad || !ogrenci.soyad || !ogrenci.bolum) {
-            bildirimGoster("Lütfen bütün alanları doldur.", true);
-            return;
-        }
+    const id = document.getElementById("ogrenciId").value;
 
-        try {
-            const cevap = await fetch(
-                id ? `${API_URL}/${id}` : API_URL,
-                {
-                    method: id ? "PUT" : "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify(ogrenci)
-                }
-            );
+    const ogrenci = {
+        ad: document.getElementById("ad").value.trim(),
+        soyad: document.getElementById("soyad").value.trim(),
+        bolum: document.getElementById("bolum").value.trim()
+    };
 
-            if (!cevap.ok) {
-                throw new Error("İşlem başarısız.");
-            }
-
-            this.reset();
-            document.getElementById("ogrenciId").value = "";
-
-            formuKapat();
-            document.getElementById("arama").value = "";
-
-            await ogrencileriGetir();
-
-            document.getElementById("formBasligi").textContent =
-                "Yeni Öğrenci Ekle";
-
-            bildirimGoster(
-                id
-                    ? "Öğrenci başarıyla güncellendi."
-                    : "Öğrenci başarıyla eklendi."
-            );
-
-        } catch (hata) {
-            console.error("Öğrenci kaydetme hatası:", hata);
-
-            bildirimGoster(
-                "İşlem başarısız. Backend ve veritabanını kontrol et.",
-                true
-            );
-        }
+    if (!ogrenci.ad || !ogrenci.soyad || !ogrenci.bolum) {
+        bildirimGoster("Lütfen bütün alanları doldur.", true);
+        return;
     }
-);
 
-// 10. Öğrenciyi sil
+    const kaydetButonu = document.getElementById("kaydetButonu");
+    const eskiMetin = kaydetButonu.textContent;
+
+    kaydetButonu.disabled = true;
+    kaydetButonu.textContent = "Kaydediliyor...";
+
+    try {
+        const cevap = await fetch(
+            id ? `${API_URL}/${encodeURIComponent(id)}` : API_URL,
+            {
+                method: id ? "PUT" : "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(ogrenci)
+            }
+        );
+
+        if (!cevap.ok) {
+            const detay = await cevap.text();
+            throw new Error(detay || `HTTP ${cevap.status}`);
+        }
+
+        formuKapat();
+        document.getElementById("arama").value = "";
+
+        await ogrencileriGetir();
+
+        bildirimGoster(
+            id ? "Öğrenci başarıyla güncellendi." : "Yeni öğrenci eklendi."
+        );
+
+    } catch (hata) {
+        console.error("Öğrenci kaydetme hatası:", hata);
+        bildirimGoster(
+            "Kayıt başarısız. Backend ve veritabanı bağlantısını kontrol et.",
+            true
+        );
+    } finally {
+        kaydetButonu.disabled = false;
+        kaydetButonu.textContent = eskiMetin;
+    }
+}
+
+/* Öğrenciyi sil */
 async function ogrenciSil(id) {
-    const onay = confirm("Bu öğrenciyi silmek istiyor musun?");
+    const ogrenci = ogrenciListesi.find(
+        kayit => Number(kayit.id) === Number(id)
+    );
 
-    if (!onay) {
+    const isim = ogrenci
+        ? `${ogrenci.ad || ""} ${ogrenci.soyad || ""}`.trim()
+        : "bu öğrenciyi";
+
+    if (!confirm(`${isim} adlı öğrenciyi silmek istiyor musun?`)) {
         return;
     }
 
     try {
-        const cevap = await fetch(`${API_URL}/${id}`, {
-            method: "DELETE"
-        });
+        const cevap = await fetch(
+            `${API_URL}/${encodeURIComponent(id)}`,
+            { method: "DELETE" }
+        );
 
         if (!cevap.ok) {
-            throw new Error("Silme işlemi başarısız.");
+            throw new Error(`Silme isteği başarısız: HTTP ${cevap.status}`);
         }
 
-        await ogrencileriGetir();
+        ogrenciListesi = ogrenciListesi.filter(
+            kayit => Number(kayit.id) !== Number(id)
+        );
+
+        ogrencileriFiltrele();
+        istatistikleriGuncelle();
+        bolumAnaliziniGuncelle();
 
         bildirimGoster("Öğrenci başarıyla silindi.");
 
     } catch (hata) {
         console.error("Öğrenci silme hatası:", hata);
-
-        bildirimGoster(
-            "Öğrenci silinemedi. Backend'i kontrol et.",
-            true
-        );
+        bildirimGoster("Öğrenci silinemedi. Backend'i kontrol et.", true);
     }
 }
 
-// 11. Modalın dışına tıklanınca formu kapat
-document.getElementById("ogrenciModal").addEventListener(
-    "click",
-    function(event) {
-        if (event.target === this) {
-            formuKapat();
-        }
-    }
-);
+/* Kısa bildirim göster */
+function bildirimGoster(mesaj, hata = false) {
+    const alan = document.getElementById("bildirim");
 
-// 12. Spring Bean sayısını getir
+    alan.textContent = mesaj;
+    alan.classList.toggle("error", hata);
+    alan.classList.add("show");
+
+    clearTimeout(bildirimZamanlayicisi);
+
+    bildirimZamanlayicisi = setTimeout(() => {
+        alan.classList.remove("show");
+    }, 3200);
+}
+
+/* Spring bean sayısını getir */
 async function beanSayisiniGetir() {
     const alan = document.getElementById("beanSayisi");
 
     try {
-        const cevap = await fetch("/sistem/bean-sayisi");
+        const cevap = await fetch(BEAN_URL);
+        const veri = await jsonOku(cevap);
 
-        if (!cevap.ok) {
-            throw new Error("Bean sayısı alınamadı.");
+        // Endpoint'in JSON alanı beanSayisi veya beanCount olabilir.
+        const sayi = veri.beanSayisi ?? veri.beanCount;
+
+        alan.textContent = sayi ?? "—";
+
+        if (sayi == null) {
+            console.warn("Bean sayısı yanıtında beklenen alan bulunamadı:", veri);
         }
-
-        const veri = await cevap.json();
-
-        alan.textContent = veri.beanSayisi;
-
     } catch (hata) {
-        console.error("Bean sayısı hatası:", hata);
-        alan.textContent = "Alınamadı";
+        console.warn("Bean sayısı alınamadı:", hata);
+        alan.textContent = "—";
     }
 }
 
-// 13. Spring Boot sistem durumunu kontrol et
+/* Spring Boot Actuator sağlık kontrolü */
 async function sistemDurumunuGetir() {
     const durumAlani = document.getElementById("sistemDurumu");
-    const detayAlani = document.getElementById("sistemDetayi");
-    const nokta = document.getElementById("sistemDurumNoktasi");
+    const kisaDurum = document.getElementById("kisaSistemDurumu");
+    const miniDurum = document.getElementById("miniSistemDurumu");
+    const detay = document.getElementById("sistemDetayi");
+    const nokta = document.getElementById("miniDurumNoktasi");
 
-    durumAlani.textContent = "Kontrol ediliyor...";
-    detayAlani.textContent = "Sistem sağlık kontrolü yapılıyor.";
-
+    durumAlani.textContent = "Kontrol ediliyor";
+    durumAlani.className = "system-badge pending";
+    kisaDurum.textContent = "Kontrol ediliyor";
+    miniDurum.textContent = "Kontrol ediliyor";
     nokta.classList.remove("online", "offline");
 
     try {
-        const cevap = await fetch("/actuator/health");
+        const cevap = await fetch(HEALTH_URL);
+        const veri = await cevap.json();
 
-        // DOWN yanıtında HTTP 503 gelse bile JSON durumunu okumayı dene.
-        let veri;
-
-        try {
-            veri = await cevap.json();
-        } catch {
-            throw new Error("Sağlık bilgisi okunamadı.");
-        }
-
-        if (veri.status === "UP") {
+        if (cevap.ok && veri.status === "UP") {
             durumAlani.textContent = "Sistem çalışıyor";
-            detayAlani.textContent = "Sistem sağlıklı.";
+            durumAlani.className = "system-badge online";
+            kisaDurum.textContent = "Aktif";
+            miniDurum.textContent = "Sistem aktif";
+            detay.textContent = "Spring Boot sağlık kontrolü başarılı.";
             nokta.classList.add("online");
-
-        } else if (veri.status === "DOWN") {
-            durumAlani.textContent = "Sistem çalışmıyor";
-            detayAlani.textContent = "Sistemde bir sağlık sorunu var.";
-            nokta.classList.add("offline");
-
         } else {
-            durumAlani.textContent = "Sistem durumu bilinmiyor";
-            detayAlani.textContent =
-                "Durum: " + (veri.status || "Bilinmiyor");
+            durumAlani.textContent = "Kontrol başarısız";
+            durumAlani.className = "system-badge offline";
+            kisaDurum.textContent = "Sorun var";
+            miniDurum.textContent = "Kontrol gerekli";
+            detay.textContent =
+                "Sağlık kontrolü UP döndürmedi. Veritabanı veya uygulama durumunu kontrol et.";
             nokta.classList.add("offline");
         }
-
     } catch (hata) {
-        console.error("Sistem durumu hatası:", hata);
+        console.warn("Actuator sağlık kontrolü alınamadı:", hata);
 
-        durumAlani.textContent = "Sisteme ulaşılamıyor";
-        detayAlani.textContent =
-            "Backend kapalı olabilir veya sağlık kontrolüne erişilemiyor.";
-
+        durumAlani.textContent = "Erişilemiyor";
+        durumAlani.className = "system-badge offline";
+        kisaDurum.textContent = "Bilinmiyor";
+        miniDurum.textContent = "Erişilemiyor";
+        detay.textContent =
+            "Actuator adresine ulaşılamadı. Uygulamanın çalıştığını ve /actuator/health adresinin açık olduğunu kontrol et.";
         nokta.classList.add("offline");
     }
 }
-
-// 14. Sayfa açıldığında fonksiyonları çalıştır
-ogrencileriGetir();
-beanSayisiniGetir();
-sistemDurumunuGetir();

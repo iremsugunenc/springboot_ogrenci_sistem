@@ -1,188 +1,270 @@
 
-<!doctype html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#111827">
     <title>Öğrenci Yönetim Sistemi</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="script.js" defer></script>
 </head>
 <body>
+<div class="app-layout">
 
     <aside class="sidebar">
-        <div class="logo">🎓 ÖğrenciPanel</div>
+        <a href="#" class="brand">
+            <span class="brand-icon">S</span>
+            <span>Student<span class="brand-light">Hub</span></span>
+        </a>
 
-        <nav>
-            <a href="#" class="menu-item active">🏠 Ana Sayfa</a>
-            <a href="#ogrenciBolumu" class="menu-item">👨‍🎓 Öğrenciler</a>
+        <div class="menu-label">MENÜ</div>
+        <nav class="navigation">
+            <a href="#anaSayfa" class="menu-item active">
+                <span class="menu-icon">⌂</span> Genel Bakış
+            </a>
+            <a href="#ogrenciBolumu" class="menu-item">
+                <span class="menu-icon">♙</span> Öğrenciler
+            </a>
+            <a href="#analizBolumu" class="menu-item">
+                <span class="menu-icon">▥</span> Bölüm Analizi
+            </a>
         </nav>
 
-        <div class="sidebar-bottom">
-            <span>Öğrenci Yönetim Sistemi</span>
-            <p class="bean-info">
-                Spring şu an <strong id="beanSayisi">...</strong> bean yönetiyor.
-            </p>
+        <div class="sidebar-spacer"></div>
+
+        <div class="system-mini-card">
+            <div class="mini-card-icon">✦</div>
+            <strong>Sistem durumu</strong>
+            <p>Spring Boot uygulaması</p>
+            <div class="mini-status">
+                <span id="miniDurumNoktasi" class="status-dot"></span>
+                <span id="miniSistemDurumu">Kontrol ediliyor</span>
+            </div>
+        </div>
+
+        <div class="sidebar-footer">
+            <span class="footer-logo">S</span>
+            <div>
+                <strong>StudentHub</strong>
+                <p>Öğrenci Yönetim Sistemi</p>
+            </div>
         </div>
     </aside>
 
-    <main class="main-content">
-
+    <main class="main-content" id="anaSayfa">
         <header class="topbar">
-            <div>
-                <h1>Öğrenci Yönetim Sistemi</h1>
-                <p>Öğrencilerini kolayca yönet.</p>
-            </div>
-
-            <div class="profile">
-                <span class="profile-icon">👤</span>
-                <span>Yönetici</span>
+            <div class="breadcrumb">Panel <span>/</span> Genel Bakış</div>
+            <div class="topbar-right">
+                <div class="date-chip"><span>◷</span> <span id="bugununTarihi"></span></div>
+                <div class="user-profile">
+                    <div class="avatar">Y</div>
+                    <div class="user-info">
+                        <strong>Yönetici</strong>
+                        <span>Sistem yöneticisi</span>
+                    </div>
+                </div>
             </div>
         </header>
 
-        <section class="welcome">
+        <section class="page-heading">
             <div>
-                <h2>Hoş geldin! 👋</h2>
-                <p>Öğrenci kayıtlarını buradan yönetebilirsin.</p>
+                <div class="eyebrow">YÖNETİM PANELİ</div>
+                <h1>Genel Bakış <span class="heading-sparkle">✦</span></h1>
+                <p>Öğrenci kayıtlarını ve sistem istatistiklerini tek yerden yönet.</p>
             </div>
-
             <button type="button" class="primary-button" onclick="formuAc()">
-                + Öğrenci Ekle
+                <span>＋</span> Yeni öğrenci ekle
             </button>
         </section>
 
-        <section class="stats">
-            <div class="stat-card">
-                <div class="stat-icon blue">👨‍🎓</div>
-                <div>
-                    <p>Toplam Öğrenci</p>
-                    <h2 id="toplamOgrenci">0</h2>
+        <section class="stats-grid">
+            <article class="stat-card">
+                <div class="stat-top">
+                    <div class="stat-icon icon-blue">♙</div>
+                    <span class="stat-tag">Kayıtlar</span>
                 </div>
-            </div>
+                <p class="stat-label">Toplam öğrenci</p>
+                <div class="stat-bottom">
+                    <h2 id="toplamOgrenci">—</h2>
+                    <span class="stat-caption">kayıtlı öğrenci</span>
+                </div>
+            </article>
 
-            <div class="stat-card">
-                <div class="stat-icon purple">📚</div>
-                <div>
-                    <p>Farklı Bölüm</p>
-                    <h2 id="toplamBolum">0</h2>
+            <article class="stat-card">
+                <div class="stat-top">
+                    <div class="stat-icon icon-purple">▦</div>
+                    <span class="stat-tag">Akademik</span>
                 </div>
-            </div>
+                <p class="stat-label">Farklı bölüm</p>
+                <div class="stat-bottom">
+                    <h2 id="toplamBolum">—</h2>
+                    <span class="stat-caption">aktif bölüm</span>
+                </div>
+            </article>
+
+            <article class="stat-card">
+                <div class="stat-top">
+                    <div class="stat-icon icon-green">✓</div>
+                    <span class="stat-tag">Canlı kontrol</span>
+                </div>
+                <p class="stat-label">Uygulama durumu</p>
+                <div class="stat-bottom">
+                    <h2 id="kisaSistemDurumu" class="status-value">Kontrol ediliyor</h2>
+                </div>
+            </article>
+
+            <article class="stat-card">
+                <div class="stat-top">
+                    <div class="stat-icon icon-orange">{ }</div>
+                    <span class="stat-tag">Spring</span>
+                </div>
+                <p class="stat-label">Spring bean sayısı</p>
+                <div class="stat-bottom">
+                    <h2 id="beanSayisi">—</h2>
+                    <span class="stat-caption">yönetilen bileşen</span>
+                </div>
+            </article>
         </section>
 
-        <section class="system-status-card">
-            <div class="system-status-icon">⚙️</div>
-
-            <div class="system-status-content">
-                <h2>Sistem Durumu</h2>
-                <p>Spring Boot uygulamasının sağlık kontrolü</p>
-
-                <div class="system-status-line">
-                    <span id="sistemDurumNoktasi" class="status-dot"></span>
-                    <strong id="sistemDurumu">Kontrol ediliyor...</strong>
+        <section class="analytics-grid" id="analizBolumu">
+            <article class="panel chart-panel">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Bölüm dağılımı</h2>
+                        <p>Öğrencilerin bölümlere göre dağılımı</p>
+                    </div>
+                    <span class="panel-icon">◉</span>
                 </div>
 
-                <p class="system-status-detail" id="sistemDetayi">
-                    Actuator üzerinden kontrol ediliyor.
-                </p>
-            </div>
+                <div class="chart-area">
+                    <div class="chart-canvas-wrap">
+                        <canvas id="bolumGrafigi" aria-label="Bölümlere göre öğrenci dağılımı" role="img"></canvas>
+                        <div class="chart-center">
+                            <span>Toplam</span>
+                            <strong id="grafikToplam">0</strong>
+                            <small>öğrenci</small>
+                        </div>
+                    </div>
+                    <div id="grafikBosMesaji" class="chart-empty" hidden>
+                        Grafik için henüz bölüm verisi yok.
+                    </div>
+                </div>
 
-            <button
-                type="button"
-                class="secondary-button"
-                onclick="sistemDurumunuGetir()"
-            >
-                Yenile
-            </button>
+                <div id="bolumLejandi" class="chart-legend"></div>
+            </article>
+
+            <article class="panel departments-panel">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Bölüm istatistikleri</h2>
+                        <p>Bölümlerdeki öğrenci sayıları</p>
+                    </div>
+                    <span class="panel-icon">▤</span>
+                </div>
+                <div id="bolumListesi" class="department-list">
+                    <div class="loading-state">Bölüm verileri yükleniyor...</div>
+                </div>
+            </article>
         </section>
 
-        <section class="student-section" id="ogrenciBolumu">
-            <div class="section-header">
+        <section class="panel student-panel" id="ogrenciBolumu">
+            <div class="student-panel-heading">
                 <div>
-                    <h2>Öğrenci Listesi</h2>
-                    <p>Kayıtlı öğrencileri görüntüle ve ara.</p>
+                    <div class="eyebrow">KAYIT YÖNETİMİ</div>
+                    <h2>Öğrenciler</h2>
+                    <p>Kayıtları görüntüle, ara, düzenle veya sil.</p>
                 </div>
+                <button type="button" class="primary-button" onclick="formuAc()">
+                    ＋ Öğrenci ekle
+                </button>
+            </div>
 
-                <input
-                    type="text"
-                    id="arama"
-                    placeholder="Öğrenci ara..."
-                    oninput="ogrencileriFiltrele()"
-                >
+            <div class="table-toolbar">
+                <div class="search-box">
+                    <span>⌕</span>
+                    <input type="search" id="arama" placeholder="Ad, soyad veya bölüm ara..." autocomplete="off">
+                </div>
+                <span class="result-count" id="sonucSayisi">0 öğrenci</span>
             </div>
 
             <div class="table-container">
                 <table>
                     <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Ad</th>
-                            <th>Soyad</th>
-                            <th>Bölüm</th>
-                            <th>İşlemler</th>
-                        </tr>
+                    <tr>
+                        <th>ÖĞRENCİ</th>
+                        <th>ÖĞRENCİ NO</th>
+                        <th>BÖLÜM</th>
+                        <th class="actions-heading">İŞLEMLER</th>
+                    </tr>
                     </thead>
-
                     <tbody id="ogrenciTablosu">
-                        <tr>
-                            <td colspan="5" class="empty">
-                                Öğrenciler yükleniyor...
-                            </td>
-                        </tr>
+                    <tr><td colspan="4" class="empty">Öğrenciler yükleniyor...</td></tr>
                     </tbody>
                 </table>
             </div>
+            <div class="table-footer">
+                <span id="tabloBilgisi">Kayıtlar yükleniyor...</span>
+                <button type="button" class="text-button" onclick="ogrencileriGetir()">↻ Listeyi yenile</button>
+            </div>
         </section>
 
-    </main>
-
-    <div id="ogrenciModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div>
-                    <h2 id="formBasligi">Yeni Öğrenci Ekle</h2>
-                    <p>Öğrenci bilgilerini doldur.</p>
-                </div>
-
-                <button
-                    type="button"
-                    class="close-button"
-                    onclick="formuKapat()"
-                >×</button>
+        <section class="system-panel">
+            <div class="system-symbol">⌘</div>
+            <div class="system-copy">
+                <h3>Spring Boot sağlık kontrolü</h3>
+                <p id="sistemDetayi">Uygulama durumu kontrol ediliyor.</p>
             </div>
+            <div class="system-actions">
+                <span id="sistemDurumu" class="system-badge pending">Kontrol ediliyor</span>
+                <button type="button" class="secondary-button" onclick="sistemDurumunuGetir()">Yenile ↻</button>
+            </div>
+        </section>
 
-            <form id="ogrenciFormu">
-                <input type="hidden" id="ogrenciId">
+        <footer class="page-footer">
+            <span>StudentHub <span class="footer-dot">•</span> Öğrenci Yönetim Sistemi</span>
+            <span>Spring Boot ile geliştirildi</span>
+        </footer>
+    </main>
+</div>
 
-                <label for="ad">Ad</label>
-                <input type="text" id="ad" required placeholder="Öğrencinin adı">
-
-                <label for="soyad">Soyad</label>
-                <input type="text" id="soyad" required placeholder="Öğrencinin soyadı">
-
-                <label for="bolum">Bölüm</label>
-                <input
-                    type="text"
-                    id="bolum"
-                    required
-                    placeholder="Örn. Yazılım Mühendisliği"
-                >
-
-                <div class="form-buttons">
-                    <button
-                        type="button"
-                        class="secondary-button"
-                        onclick="formuKapat()"
-                    >
-                        İptal
-                    </button>
-
-                    <button type="submit" class="primary-button">Kaydet</button>
-                </div>
-            </form>
+<div id="ogrenciModal" class="modal" aria-hidden="true">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div class="modal-heading-icon">♙</div>
+            <div class="modal-heading-text">
+                <h2 id="formBasligi">Yeni öğrenci ekle</h2>
+                <p>Öğrenci bilgilerini aşağıya gir.</p>
+            </div>
+            <button type="button" class="close-button" onclick="formuKapat()" aria-label="Kapat">×</button>
         </div>
+
+        <form id="ogrenciFormu">
+            <input type="hidden" id="ogrenciId">
+
+            <label for="ad">Ad</label>
+            <input type="text" id="ad" required maxlength="100" placeholder="Öğrencinin adı">
+
+            <label for="soyad">Soyad</label>
+            <input type="text" id="soyad" required maxlength="100" placeholder="Öğrencinin soyadı">
+
+            <label for="bolum">Bölüm</label>
+            <input type="text" id="bolum" required maxlength="150" placeholder="Örn. Yazılım Mühendisliği">
+
+            <div class="form-buttons">
+                <button type="button" class="secondary-button" onclick="formuKapat()">Vazgeç</button>
+                <button type="submit" id="kaydetButonu" class="primary-button">Öğrenciyi kaydet</button>
+            </div>
+        </form>
     </div>
+</div>
 
-    <div id="bildirim" class="notification"></div>
-
-    <script src="script.js"></script>
+<div id="bildirim" class="notification" role="status" aria-live="polite"></div>
 </body>
 </html>
