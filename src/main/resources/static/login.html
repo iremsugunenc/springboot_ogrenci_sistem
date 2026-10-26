@@ -1,0 +1,126 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudentHub - Giriş</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #111827, #334477);
+        }
+
+        .login-card {
+            width: 90%;
+            max-width: 400px;
+            padding: 35px;
+            background: white;
+            border-radius: 18px;
+            box-shadow: 0 15px 40px #0003;
+        }
+
+        h1 {
+            margin-bottom: 8px;
+            text-align: center;
+            color: #26345a;
+        }
+
+        p {
+            margin-bottom: 28px;
+            text-align: center;
+            color: #777;
+        }
+
+        label {
+            display: block;
+            margin: 15px 0 7px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        button {
+            width: 100%;
+            margin-top: 25px;
+            padding: 13px;
+            border: none;
+            border-radius: 8px;
+            background: #5368f5;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #4053dc;
+        }
+
+        .error {
+            color: #c62828;
+            background: #fff0f0;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        [hidden] {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h1>StudentHub</h1>
+        <p>Öğrenci Yönetim Sistemine Giriş</p>
+
+        <div id="error" class="error" hidden>
+            Kullanıcı adı veya şifre hatalı!
+        </div>
+
+        <form action="/login" method="post">
+            <label for="username">Kullanıcı adı</label>
+            <input
+                id="username"
+                name="username"
+                type="text"
+                placeholder="Kullanıcı adınızı girin"
+                required
+                autofocus
+            >
+
+            <label for="password">Şifre</label>
+            <input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="Şifrenizi girin"
+                required
+            >
+
+            <button type="submit">Giriş Yap</button>
+        </form>
+    </div>
+
+    <script>
+        if (new URLSearchParams(window.location.search).has("error")) {
+            document.getElementById("error").hidden = false;
+        }
+    </script>
+</body>
+</html>

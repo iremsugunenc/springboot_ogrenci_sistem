@@ -1,0 +1,92 @@
+
+package com.example.ogrenci_yonetim_sistemi;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+public class SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http)
+            throws Exception {
+
+        http
+            .csrf(csrf -> csrf.disable())
+
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(
+                    "/login.html",
+                    "/style.css",
+                    "/script.js",
+                    "/favicon.ico",
+                    "/h2-console/**"
+                ).permitAll()
+
+                .requestMatchers(
+                    org.springframework.http.HttpMethod.POST,
+                    "/ogrenciler"
+                ).hasRole("ADMIN")
+
+                .requestMatchers(
+                    org.springframework.http.HttpMethod.PUT,
+                    "/ogrenciler/**"
+                ).hasRole("ADMIN")
+
+                .requestMatchers(
+                    org.springframework.http.HttpMethod.DELETE,
+                    "/ogrenciler/**"
+                ).hasRole("ADMIN")
+
+                .anyRequest().authenticated()
+            )
+
+            .formLogin(form -> form
+                .loginPage("/login.html")
+                .loginProcessingUrl("/login")
+                .defaultSuccessUrl("/", true)
+                .failureUrl("/login.html?error")
+                .permitAll()
+            )
+
+            .logout(logout -> logout
+                .logoutSuccessUrl("/login.html")
+                .permitAll()
+            )
+
+            .headers(headers -> headers
+                .frameOptions(frame -> frame.sameOrigin())
+            );
+
+        return http.build();
+    }
+
+    @Bean
+    public UserDetailsService userDetailsService(
+            PasswordEncoder passwordEncoder) {
+
+        var admin = User.withUsername("admin")
+            .password(passwordEncoder.encode("admin123"))
+            .roles("ADMIN")
+            .build();
+
+        var kullanici = User.withUsername("kullanici")
+            .password(passwordEncoder.encode("kullanici123"))
+            .roles("USER")
+            .build();
+
+        return new InMemoryUserDetailsManager(admin, kullanici);
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+}
